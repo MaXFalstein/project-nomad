@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { IconMapPinFilled, IconTrash, IconMapPin, IconX } from '@tabler/icons-react'
+import { IconHome, IconMapPinFilled, IconTrash, IconMapPin, IconX } from '@tabler/icons-react'
 import { PIN_COLORS } from '~/hooks/useMapMarkers'
 import type { MapMarker } from '~/hooks/useMapMarkers'
 
@@ -8,7 +8,9 @@ interface MarkerPanelProps {
   onDelete: (id: number) => void
   onFlyTo: (longitude: number, latitude: number) => void
   onSelect: (id: number | null) => void
+  onSetAsHome: (id: number) => void
   selectedMarkerId: number | null
+  homeMarkerId?: number | null
 }
 
 export default function MarkerPanel({
@@ -16,7 +18,9 @@ export default function MarkerPanel({
   onDelete,
   onFlyTo,
   onSelect,
+  onSetAsHome,
   selectedMarkerId,
+  homeMarkerId = null,
 }: MarkerPanelProps) {
   const [open, setOpen] = useState(false)
 
@@ -98,6 +102,17 @@ export default function MarkerPanel({
                   <p className="text-sm font-medium text-text-primary truncate">
                     {marker.name}
                   </p>
+                </button>
+                <button
+                  onClick={() => onSetAsHome(marker.id)}
+                  className={`shrink-0 rounded p-1 transition-all ${
+                    marker.id === homeMarkerId
+                      ? 'text-desert-orange opacity-100'
+                      : 'text-text-muted opacity-0 group-hover:opacity-100 hover:text-desert-orange hover:bg-surface-secondary'
+                  }`}
+                  title={marker.id === homeMarkerId ? 'Default map location' : 'Use as home'}
+                >
+                  <IconHome size={14} />
                 </button>
                 <button
                   onClick={() => onDelete(marker.id)}

@@ -19,12 +19,15 @@ import ActiveDownloads from '~/components/ActiveDownloads'
 import Alert from '~/components/Alert'
 import { formatBytes } from '~/lib/util'
 import { hasDownloadedGlobalMap } from '~/lib/global_map_banner'
+import DefaultLocationForm from '~/components/maps/DefaultLocationForm'
+import type { ResolvedDefaultMapView } from '../../../types/maps'
 
 const CURATED_COLLECTIONS_KEY = 'curated-map-collections'
 const GLOBAL_MAP_INFO_KEY = 'global-map-info'
 
 export default function MapsManager(props: {
   maps: { baseAssetsExist: boolean; worldBasemapExists: boolean; regionFiles: FileEntry[] }
+  defaultView: ResolvedDefaultMapView | null
 }) {
   const queryClient = useQueryClient()
   const { openModal, closeAllModals } = useModals()
@@ -410,6 +413,8 @@ export default function MapsManager(props: {
               <p className="text-text-muted">No curated collections available.</p>
             )}
           </div>
+          <DefaultLocationForm defaultView={props.defaultView ?? null} />
+
           <div className="mt-12 mb-6 flex items-center justify-between">
             <StyledSectionHeader title="Stored Map Files" className="!mb-0" />
             <StyledButton

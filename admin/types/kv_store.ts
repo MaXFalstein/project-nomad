@@ -45,6 +45,11 @@ export const KV_STORE_SCHEMA = {
   'gpu.autoRemediatedAt':       'string',
   'apps.homebox.apiKeyPepper':  'string',
   'benchmark.rerunBannerDismissed': 'boolean',
+  // Device-wide default map location. JSON string of StoredDefaultMapView
+  // ({ name, longitude, latitude, zoom, markerId }). Written/read by MapService
+  // via dedicated /api/maps/default-view endpoints — not the generic settings
+  // API, so lat/lng/zoom/marker validation stays in one place. Null when unset.
+  'maps.defaultView': 'string',
   // Drug Reference v1 — export_date of the last successfully completed
   // openFDA drug-label ingest (e.g. "2026-06-06"). Written by
   // IngestDrugDataJob on final-part completion; read by the search page's

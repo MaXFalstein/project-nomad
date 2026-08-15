@@ -12,20 +12,35 @@ import 'maplibre-gl/dist/maplibre-gl.css'
 
 import { Protocol } from 'pmtiles'
 import { useEffect, useRef, useState, useCallback } from 'react'
+import type { MutableRefObject } from 'react'
 
 import { useMapMarkers, PIN_COLORS } from '~/hooks/useMapMarkers'
 import type { PinColorId } from '~/hooks/useMapMarkers'
+
+import { IconHome } from '@tabler/icons-react'
 
 import MarkerPin from './MarkerPin'
 import MarkerPanel from './MarkerPanel'
 import CoordinateOverlay from './CoordinateOverlay'
 import ScaleUnitToggle from './ScaleUnitToggle'
+import api from '~/lib/api'
+import { useNotifications } from '~/context/NotificationContext'
+import type { ResolvedDefaultMapView } from '../../../types/maps'
 
 type ScaleUnit = 'imperial' | 'metric'
+
+export type MapViewSnapshot = { longitude: number; latitude: number; zoom: number }
+
+export type MapViewActions = {
+  getCurrentView: () => MapViewSnapshot | null
+}
 
 type MapComponentProps = {
   isHoveringUI: boolean
   showCoordinatesEnabled: boolean
+  defaultView?: ResolvedDefaultMapView | null
+  onHomeChange?: (view: ResolvedDefaultMapView | null) => void
+  actionsRef?: MutableRefObject<MapViewActions | null>
 }
 
 const SAVED_MAP_VIEW_KEY = 'nomad:map-view'
@@ -60,14 +75,33 @@ const getSavedMapView = (): SavedMapView | null => {
   return null
 }
 
+const toMapView = (
+  view: { longitude: number; latitude: number; zoom: number } | null | undefined
+): SavedMapView | null => {
+  if (!view) return null
+  if (
+    Number.isFinite(view.longitude) &&
+    Number.isFinite(view.latitude) &&
+    Number.isFinite(view.zoom)
+  ) {
+    return { longitude: view.longitude, latitude: view.latitude, zoom: view.zoom }
+  }
+  return null
+}
+
 export default function MapComponent({
   isHoveringUI,
   showCoordinatesEnabled,
+  defaultView = null,
+  onHomeChange,
+  actionsRef,
 }: MapComponentProps) {
   const mapRef = useRef<MapRef>(null)
   const animationFrameRef = useRef<number | null>(null)
+  const { addNotification } = useNotifications()
 
   const { markers, addMarker, deleteMarker } = useMapMarkers()
+  const [homeView, setHomeView] = useState<ResolvedDefaultMapView | null>(defaultView ?? null)
 
   const [isDraggingMap, setIsDraggingMap] = useState(false)
   const [placingMarker, setPlacingMarker] = useState<{ lng: number; lat: number } | null>(null)
@@ -80,10 +114,9 @@ export default function MapComponent({
     () => (localStorage.getItem('nomad:map-scale-unit') as ScaleUnit) || 'metric'
   )
 
-  // Resolve the initial view once at mount: saved view → default. Lazy so it isn't recomputed
-  // on every render.
-  const [initialViewState] = useState(() => getSavedMapView() ?? DEFAULT_MAP_VIEW)
-
+  // Resolve the initial view once at mount: last-view → configured home → US fallback.
+  // Lazy so it isn't recomputed on every render. defaultView is server-rendered so a
+  // first visit does not flash the US default before the home location loads.
   const [cursorLngLat, setCursorLngLat] = useState<{
     lng: number
     lat: number
@@ -92,6 +125,29 @@ export default function MapComponent({
   } | null>(null)
 
   const [showCoordinates, setShowCoordinates] = useState(false)
+
+  const [initialViewState] = useState(
+    () => getSavedMapView() ?? toMapView(defaultView) ?? DEFAULT_MAP_VIEW
+  )
+
+  useEffect(() => {
+    setHomeView(defaultView ?? null)
+  }, [defaultView])
+
+  useEffect(() => {
+    if (!actionsRef) return
+    actionsRef.current = {
+      getCurrentView: () => {
+        const map = mapRef.current
+        if (!map) return null
+        const center = map.getCenter()
+        return { longitude: center.lng, latitude: center.lat, zoom: map.getZoom() }
+      },
+    }
+    return () => {
+      actionsRef.current = null
+    }
+  }, [actionsRef])
 
   useEffect(() => {
     const protocol = new Protocol()
@@ -179,6 +235,30 @@ export default function MapComponent({
   const handleFlyTo = useCallback((longitude: number, latitude: number) => {
     mapRef.current?.flyTo({ center: [longitude, latitude], zoom: 12, duration: 1500 })
   }, [])
+
+  const handleFlyToHome = useCallback(() => {
+    if (!homeView) return
+    mapRef.current?.flyTo({
+      center: [homeView.longitude, homeView.latitude],
+      zoom: homeView.zoom,
+      duration: 1500,
+    })
+  }, [homeView])
+
+  const handleUsePinAsHome = useCallback(
+    async (markerId: number) => {
+      const result = await api.setMapDefaultView({ markerId })
+      if (result?.defaultView) {
+        setHomeView(result.defaultView)
+        onHomeChange?.(result.defaultView)
+        addNotification({
+          type: 'success',
+          message: 'This pin is now the default map location.',
+        })
+      }
+    },
+    [addNotification, onHomeChange]
+  )
 
   const handleDeleteMarker = useCallback(
     (id: number) => {
@@ -381,13 +461,27 @@ export default function MapComponent({
         </Map>
       </div>
 
+      {homeView && (
+        <button
+          type="button"
+          onClick={handleFlyToHome}
+          onMouseEnter={hideCoordinates}
+          title={homeView.name ? `Go to ${homeView.name}` : 'Go to home location'}
+          className="absolute right-[36px] top-[250px] z-40 flex h-[29px] w-[29px] items-center justify-center rounded bg-white text-[#333] shadow-[0_0_0_2px_rgba(0,0,0,0.1)] hover:bg-gray-100"
+        >
+          <IconHome size={16} />
+        </button>
+      )}
+
       <div onMouseEnter={hideCoordinates}>
         <MarkerPanel
           markers={markers}
           onDelete={handleDeleteMarker}
           onFlyTo={handleFlyTo}
           onSelect={setSelectedMarkerId}
+          onSetAsHome={handleUsePinAsHome}
           selectedMarkerId={selectedMarkerId}
+          homeMarkerId={homeView?.source === 'marker' ? homeView.markerId : null}
         />
       </div>
     </MapProvider>

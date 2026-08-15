@@ -8,6 +8,7 @@ import {
   mapExtractValidator,
   remoteDownloadValidator,
   remoteDownloadValidatorOptional,
+  mapDefaultViewValidator,
 } from '#validators/common'
 import { inject } from '@adonisjs/core'
 import type { HttpContext } from '@adonisjs/core/http'
@@ -19,9 +20,10 @@ export default class MapsController {
 
   async index({ inertia }: HttpContext) {
     const baseAssetsCheck = await this.mapService.ensureBaseAssets()
-    const [regionFiles, worldBasemapExists] = await Promise.all([
+    const [regionFiles, worldBasemapExists, defaultView] = await Promise.all([
       this.mapService.listRegions(),
       this.mapService.checkWorldBasemapExists(),
+      this.mapService.getDefaultView(),
     ])
     return inertia.render('maps', {
       maps: {
@@ -29,6 +31,7 @@ export default class MapsController {
         worldBasemapExists,
         regionFiles: regionFiles.files,
       },
+      defaultView,
     })
   }
 
@@ -238,5 +241,32 @@ export default class MapsController {
     }
     await marker.delete()
     return { message: 'Marker deleted' }
+  }
+
+  async getDefaultView({}: HttpContext) {
+    return { defaultView: await this.mapService.getDefaultView() }
+  }
+
+  async setDefaultView({ request, response }: HttpContext) {
+    const payload = await request.validateUsing(mapDefaultViewValidator)
+    try {
+      const defaultView = await this.mapService.setDefaultView(payload)
+      return { defaultView }
+    } catch (error) {
+      if (error instanceof Error && error.message === 'marker_not_found') {
+        return response.status(404).send({ message: 'Marker not found' })
+      }
+      if (error instanceof Error && error.message === 'invalid_view') {
+        return response.status(422).send({
+          message: 'Invalid map location. Provide a saved pin, or latitude, longitude, and zoom.',
+        })
+      }
+      throw error
+    }
+  }
+
+  async clearDefaultView({}: HttpContext) {
+    await this.mapService.clearDefaultView()
+    return { defaultView: null }
   }
 }

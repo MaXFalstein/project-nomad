@@ -173,6 +173,12 @@ View maps without internet. Download the regions you need before going offline.
 2. Navigate by dragging and zooming
 3. Search for locations using the search bar
 
+**Set a home location** so a new browser does not open over the United States:
+1. Go to **Settings → Maps Manager** and enter a name, latitude, longitude, and zoom — or pick an existing saved pin
+2. Or, on the map itself, pan to where you want and click **Set as home**, or use the house icon on a pin
+
+The first visit in a browser uses that home location. After that, this browser remembers where you left off.
+
 **To add more map regions:**
 1. Go to **Settings → Maps Manager**
 2. Select the regions you need

@@ -4,7 +4,7 @@ import { ServiceSlim } from '../../types/services'
 import { FileEntry } from '../../types/files'
 import { AppAutoUpdateStatus, AutoUpdateStatus, CheckLatestVersionResult, ContentAutoUpdateStatus, SystemInformationResponse, SystemUpdateStatus } from '../../types/system'
 import { DownloadJobWithProgress, WikipediaState } from '../../types/downloads'
-import type { Country, CountryCode, CountryGroup, MapExtractPreflight } from '../../types/maps'
+import type { Country, CountryCode, CountryGroup, MapExtractPreflight, ResolvedDefaultMapView, SetDefaultMapViewInput } from '../../types/maps'
 import { EmbedJobWithProgress, FileWarningsResult, StoredFileInfo } from '../../types/rag'
 import type { CategoryWithStatus, CollectionWithStatus, ContentUpdateCheckResult, CreatorPackWithStatus, ResourceUpdateInfo } from '../../types/collections'
 import { catchInternal } from './util'
@@ -777,6 +777,32 @@ class API {
   async deleteMapMarker(id: number) {
     return catchInternal(async () => {
       await this.client.delete(`/maps/markers/${id}`)
+    })()
+  }
+
+  async getMapDefaultView() {
+    return catchInternal(async () => {
+      const response = await this.client.get<{ defaultView: ResolvedDefaultMapView | null }>(
+        '/maps/default-view'
+      )
+      return response.data
+    })()
+  }
+
+  async setMapDefaultView(data: SetDefaultMapViewInput) {
+    return catchInternal(async () => {
+      const response = await this.client.put<{ defaultView: ResolvedDefaultMapView }>(
+        '/maps/default-view',
+        data
+      )
+      return response.data
+    })()
+  }
+
+  async clearMapDefaultView() {
+    return catchInternal(async () => {
+      const response = await this.client.delete<{ defaultView: null }>('/maps/default-view')
+      return response.data
     })()
   }
 

@@ -55,3 +55,39 @@ export type MapExtractPreflight = {
     key: string
   }
 }
+
+/** Zoom used when a saved pin is chosen as the default map location. Same as pin fly-to. */
+export const DEFAULT_MAP_HOME_PIN_ZOOM = 12
+export const DEFAULT_MAP_VIEW_MIN_ZOOM = 0
+export const DEFAULT_MAP_VIEW_MAX_ZOOM = 22
+
+/** Persisted device-wide default map location (KV `maps.defaultView`). */
+export type StoredDefaultMapView = {
+  name: string | null
+  longitude: number
+  latitude: number
+  zoom: number
+  markerId: number | null
+}
+
+export type DefaultMapViewSource = 'custom' | 'marker' | 'marker-fallback'
+
+/** Default location after resolving a live pin (or falling back to the snapshot). */
+export type ResolvedDefaultMapView = StoredDefaultMapView & {
+  source: DefaultMapViewSource
+}
+
+export type SetDefaultMapViewInput = {
+  name?: string | null
+  longitude?: number
+  latitude?: number
+  zoom?: number
+  markerId?: number
+}
+
+export type DefaultMapViewMarkerLookup = {
+  id: number
+  name: string
+  longitude: number
+  latitude: number
+} | null

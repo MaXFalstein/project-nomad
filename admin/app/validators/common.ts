@@ -219,3 +219,13 @@ export const mapExtractValidator = vine.compile(
     estimatedBytes: vine.number().min(0).optional(),
   })
 )
+
+export const mapDefaultViewValidator = vine.compile(
+  vine.object({
+    name: vine.string().trim().maxLength(255).nullable().optional(),
+    longitude: vine.number().min(-180).max(180).optional(),
+    latitude: vine.number().min(-90).max(90).optional(),
+    zoom: vine.number().min(0).max(22).optional(),
+    markerId: vine.number().withoutDecimals().positive().optional(),
+  })
+)

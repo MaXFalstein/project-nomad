@@ -1,19 +1,54 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Head, Link, router } from '@inertiajs/react'
 import { IconArrowLeft } from '@tabler/icons-react'
 
 import MapsLayout from '~/layouts/MapsLayout'
 import MapComponent from '~/components/maps/MapComponent'
+import type { MapViewActions } from '~/components/maps/MapComponent'
 import StyledButton from '~/components/StyledButton'
 import Alert from '~/components/Alert'
+import api from '~/lib/api'
+import { useNotifications } from '~/context/NotificationContext'
 
 import { FileEntry } from '../../types/files'
+import type { ResolvedDefaultMapView } from '../../types/maps'
 
 export default function Maps(props: {
   maps: { baseAssetsExist: boolean; worldBasemapExists: boolean; regionFiles: FileEntry[] }
+  defaultView: ResolvedDefaultMapView | null
 }) {
+  const { addNotification } = useNotifications()
   const [isHoveringUI, setIsHoveringUI] = useState(false)
   const [showMapCoordinates, setShowMapCoordinates] = useState(true)
+  const [defaultView, setDefaultView] = useState<ResolvedDefaultMapView | null>(
+    props.defaultView ?? null
+  )
+  const mapActionsRef = useRef<MapViewActions | null>(null)
+  const [savingHome, setSavingHome] = useState(false)
+
+  async function handleSetAsHome() {
+    const view = mapActionsRef.current?.getCurrentView()
+    if (!view) {
+      addNotification({ type: 'error', message: 'The map is not ready yet.' })
+      return
+    }
+    setSavingHome(true)
+    try {
+      const result = await api.setMapDefaultView({
+        ...view,
+        name: defaultView?.name || 'Home',
+      })
+      if (result?.defaultView) {
+        setDefaultView(result.defaultView)
+        addNotification({
+          type: 'success',
+          message: 'This view is now the default map location.',
+        })
+      }
+    } finally {
+      setSavingHome(false)
+    }
+  }
 
   const alertMessage = !props.maps.baseAssetsExist
     ? 'The base map assets have not been installed. Please download them first to enable map functionality.'
@@ -47,6 +82,16 @@ export default function Maps(props: {
             >
               {showMapCoordinates ? 'Hide Coordinates' : 'Show Coordinates'}
             </button>
+
+            <StyledButton
+              variant="secondary"
+              icon="IconHome"
+              onClick={handleSetAsHome}
+              disabled={savingHome}
+              loading={savingHome}
+            >
+              Set as home
+            </StyledButton>
 
             <Link href="/settings/maps">
               <StyledButton variant="primary" icon="IconSettings">
@@ -83,6 +128,9 @@ export default function Maps(props: {
           <MapComponent
             isHoveringUI={isHoveringUI}
             showCoordinatesEnabled={showMapCoordinates}
+            defaultView={defaultView}
+            onHomeChange={setDefaultView}
+            actionsRef={mapActionsRef}
           />
         </div>
       </div>

@@ -40,6 +40,7 @@ import {
   applyAllContentUpdatesValidator,
   mapExtractPreflightValidator,
   mapExtractValidator,
+  mapDefaultViewValidator,
 } from '#validators/common'
 import {
   listRemoteZimValidator,
@@ -244,6 +245,19 @@ router
     })
     documented(router.delete('/markers/:id', [MapsController, 'deleteMarker']), {
       summary: 'Delete a map marker',
+      tags: ['maps'],
+    })
+    documented(router.get('/default-view', [MapsController, 'getDefaultView']), {
+      summary: 'Get the default map view',
+      tags: ['maps'],
+    })
+    documented(router.put('/default-view', [MapsController, 'setDefaultView']), {
+      summary: 'Set the default map view',
+      tags: ['maps'],
+      request: mapDefaultViewValidator,
+    })
+    documented(router.delete('/default-view', [MapsController, 'clearDefaultView']), {
+      summary: 'Clear the default map view',
       tags: ['maps'],
     })
     documented(router.delete('/:filename', [MapsController, 'delete']), {

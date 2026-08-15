@@ -23,7 +23,23 @@ import InstalledResource from '#models/installed_resource'
 import { CollectionManifestService } from './collection_manifest_service.js'
 import { decideSupersededDeletion } from '../utils/superseded_resource.js'
 import type { CollectionWithStatus, MapsSpec } from '../../types/collections.js'
-import type { Country, CountryCode, CountryGroup, MapExtractPreflight } from '../../types/maps.js'
+import {
+  DEFAULT_MAP_HOME_PIN_ZOOM,
+  type Country,
+  type CountryCode,
+  type CountryGroup,
+  type MapExtractPreflight,
+  type ResolvedDefaultMapView,
+  type SetDefaultMapViewInput,
+  type StoredDefaultMapView,
+} from '../../types/maps.js'
+import KVStore from '#models/kv_store'
+import MapMarker from '#models/map_marker'
+import {
+  isValidMapView,
+  parseStoredDefaultMapView,
+  resolveDefaultMapView,
+} from '../utils/map_default_view.js'
 import {
   EXTRACT_DEFAULT_MAX_ZOOM,
   EXTRACT_MAX_ZOOM,
@@ -882,6 +898,82 @@ export class MapService implements IMapService {
     }
 
     return { tiles, bytes }
+  }
+
+  async getDefaultView(): Promise<ResolvedDefaultMapView | null> {
+    const raw = await KVStore.getValue('maps.defaultView')
+    const stored = parseStoredDefaultMapView(raw)
+    if (!stored) return null
+    return resolveDefaultMapView(stored, await this.lookupDefaultViewMarker(stored.markerId))
+  }
+
+  async setDefaultView(input: SetDefaultMapViewInput): Promise<ResolvedDefaultMapView> {
+    if (input.markerId != null) {
+      const marker = await MapMarker.find(input.markerId)
+      if (!marker) {
+        throw new Error('marker_not_found')
+      }
+      const zoom = input.zoom ?? DEFAULT_MAP_HOME_PIN_ZOOM
+      if (!isValidMapView({ longitude: marker.longitude, latitude: marker.latitude, zoom })) {
+        throw new Error('invalid_view')
+      }
+      const name = input.name?.trim() || marker.name
+      const stored: StoredDefaultMapView = {
+        name,
+        longitude: marker.longitude,
+        latitude: marker.latitude,
+        zoom,
+        markerId: marker.id,
+      }
+      await KVStore.setValue('maps.defaultView', JSON.stringify(stored))
+      return resolveDefaultMapView(stored, {
+        id: marker.id,
+        name: marker.name,
+        longitude: marker.longitude,
+        latitude: marker.latitude,
+      })
+    }
+
+    if (
+      input.longitude === undefined ||
+      input.latitude === undefined ||
+      input.zoom === undefined ||
+      !isValidMapView({
+        longitude: input.longitude,
+        latitude: input.latitude,
+        zoom: input.zoom,
+      })
+    ) {
+      throw new Error('invalid_view')
+    }
+
+    const stored: StoredDefaultMapView = {
+      name: input.name?.trim() || 'Home',
+      longitude: input.longitude,
+      latitude: input.latitude,
+      zoom: input.zoom,
+      markerId: null,
+    }
+    await KVStore.setValue('maps.defaultView', JSON.stringify(stored))
+    return resolveDefaultMapView(stored, null)
+  }
+
+  async clearDefaultView(): Promise<void> {
+    await KVStore.clearValue('maps.defaultView')
+  }
+
+  private async lookupDefaultViewMarker(
+    markerId: number | null
+  ): Promise<{ id: number; name: string; longitude: number; latitude: number } | null> {
+    if (markerId == null) return null
+    const marker = await MapMarker.find(markerId)
+    if (!marker) return null
+    return {
+      id: marker.id,
+      name: marker.name,
+      longitude: marker.longitude,
+      latitude: marker.latitude,
+    }
   }
 
   async delete(file: string): Promise<void> {

@@ -45,9 +45,10 @@ export default class SettingsController {
 
   async maps({ inertia }: HttpContext) {
     const baseAssetsCheck = await this.mapService.ensureBaseAssets()
-    const [regionFiles, worldBasemapExists] = await Promise.all([
+    const [regionFiles, worldBasemapExists, defaultView] = await Promise.all([
       this.mapService.listRegions(),
       this.mapService.checkWorldBasemapExists(),
+      this.mapService.getDefaultView(),
     ])
     return inertia.render('settings/maps', {
       maps: {
@@ -55,6 +56,7 @@ export default class SettingsController {
         worldBasemapExists,
         regionFiles: regionFiles.files,
       },
+      defaultView,
     })
   }
 

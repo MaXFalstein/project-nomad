@@ -22,6 +22,7 @@
 - **Drug Reference**: Add offline FDA drug reference (labels, interaction view, conditions, remedies) (#1040). Thanks @caweis for the contribution!
 - **Kiwix Library**: Expandable rows in Kiwix Library browser (#1060). Thanks @jarvisxyz for the contribution!
 - **Maps**: add notes input to map pin placement popup (#926). Thanks @chriscrosstalk for the contribution!
+- **Maps**: set a device-wide default map location (coordinates or a saved pin) so a new browser opens at home instead of over the United States. Per-browser last-view still wins after the first visit.
 - **RAG**: add subject/collection organization to knowledge base (#1063). Thanks @just-jbc for the contribution!
 
 ### Bug Fixes
